@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Rendición de Gastos</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --azul: #2563EB; --azul-light: #EEF3FD; --azul-mid: #93B4F8;
+    --dark: #111827; --mid: #6B7280; --light: #F3F4F6; --white: #FFFFFF;
+    --red: #EF4444; --green: #10B981; --border: #E5E7EB;
+    --radius: 12px; --radius-sm: 8px;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--light); color: var(--dark);
+    min-height: 100vh; padding-bottom: 40px; font-size: 16px;
+  }
+  .header {
+    background: var(--dark); padding: 20px 16px 16px;
+    position: sticky; top: 0; z-index: 100; border-bottom: 3px solid var(--azul);
+  }
+  .header-inner { max-width: 600px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
+  .header-icon { font-size: 20px; }
+  #titulo-display {
+    font-size: 18px; font-weight: 700; color: #fff;
+    cursor: pointer; flex: 1; display: flex; align-items: center; gap: 6px;
+  }
+  #titulo-display .edit-hint { font-size: 11px; color: #6B7280; font-weight: 400; }
+  #titulo-input {
+    font-size: 17px; font-weight: 700; color: #fff; background: transparent;
+    border: none; border-bottom: 2px solid var(--azul); outline: none;
+    flex: 1; font-family: inherit;
+  }
+  .main { max-width: 600px; margin: 0 auto; padding: 0 12px; }
+  .card {
+    background: var(--white); border-radius: var(--radius);
+    padding: 20px 16px; margin-top: 16px; box-shadow: 0 1px 8px rgba(0,0,0,0.08);
+  }
+  .card-title {
+    font-size: 11px; font-weight: 700; color: var(--mid);
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;
+  }
+  .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 13px; }
+  .field label { font-size: 12px; font-weight: 600; color: var(--mid); text-transform: uppercase; letter-spacing: 0.7px; }
+  .field input, .field select {
+    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    padding: 11px 13px; font-size: 15px; color: var(--dark);
+    background: #FAFAFA; font-family: inherit; width: 100%;
+    -webkit-appearance: none; appearance: none;
+  }
+  .field select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
+  }
+  .field input:focus, .field select:focus { border-color: var(--azul); outline: none; background: #fff; }
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .btn-primary {
+    background: var(--azul); color: #fff; border: none; border-radius: var(--radius-sm);
+    padding: 13px 20px; font-size: 15px; font-weight: 600; cursor: pointer;
+    width: 100%; font-family: inherit; letter-spacing: 0.2px; margin-top: 4px;
+  }
+  .btn-secondary {
+    background: var(--light); color: var(--dark); border: none; border-radius: var(--radius-sm);
+    padding: 13px 20px; font-size: 15px; cursor: pointer; width: 100%; font-family: inherit; margin-top: 8px;
+  }
+  .btn-row { display: flex; gap: 8px; }
+  .btn-row .btn-primary, .btn-row .btn-secondary { margin-top: 8px; }
+  .totales-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+  .total-card { background: var(--dark); border-radius: var(--radius-sm); padding: 14px; }
+  .total-label { font-size: 11px; color: #9CA3AF; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+  .total-amount { font-size: 22px; font-weight: 800; color: var(--azul-mid); line-height: 1.1; }
+  .total-count { font-size: 11px; color: #6B7280; margin-top: 3px; }
+  .cat-row { margin-bottom: 12px; }
+  .cat-header { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; }
+  .cat-name { font-weight: 500; color: var(--dark); }
+  .cat-amount { font-weight: 700; color: var(--azul); }
+  .bar-track { background: var(--light); border-radius: 5px; height: 7px; overflow: hidden; }
+  .bar-fill { background: linear-gradient(90deg, #2563EB, #60A5FA); height: 100%; border-radius: 5px; transition: width 0.5s ease; }
+  .filtro-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .filtro-select {
+    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    padding: 7px 30px 7px 10px; font-size: 13px; color: var(--dark);
+    background: #FAFAFA; font-family: inherit; -webkit-appearance: none; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+  }
+  .gasto-item {
+    background: var(--white); border-radius: var(--radius-sm); padding: 13px 14px;
+    margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  .gasto-info { flex: 1; min-width: 0; }
+  .gasto-desc { font-weight: 600; font-size: 15px; color: var(--dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gasto-meta { display: flex; align-items: center; gap: 6px; margin-top: 3px; flex-wrap: wrap; }
+  .gasto-fecha { font-size: 12px; color: var(--mid); }
+  .badge { font-size: 11px; font-weight: 600; background: var(--azul-light); color: var(--azul); border-radius: 20px; padding: 2px 8px; }
+  .comprobante-badge { font-size: 11px; color: var(--azul); }
+  .gasto-monto { font-weight: 800; font-size: 16px; color: var(--dark); white-space: nowrap; text-align: right; }
+  .gasto-acciones { display: flex; gap: 2px; flex-shrink: 0; }
+  .btn-icon { background: transparent; border: none; cursor: pointer; font-size: 17px; padding: 4px 5px; border-radius: 6px; line-height: 1; }
+  .btn-icon:active { background: var(--light); }
+  .empty { text-align: center; color: #9CA3AF; padding: 40px 20px; font-size: 14px; line-height: 1.6; }
+  .empty-icon { font-size: 36px; margin-bottom: 10px; }
+  .toast {
+    position: fixed; bottom: 20px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--dark); color: #fff; padding: 11px 22px;
+    border-radius: 30px; font-size: 14px; font-weight: 500;
+    z-index: 999; transition: transform 0.3s ease; white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .preview-img { max-height: 80px; border-radius: 6px; border: 1px solid var(--border); margin-top: 8px; }
+  .preview-pdf { font-size: 13px; color: var(--azul); margin-top: 6px; }
+  .hidden { display: none; }
+  .edit-mode-banner {
+    background: #FEF3C7; color: #92400E; font-size: 13px; font-weight: 600;
+    text-align: center; padding: 8px; border-radius: 8px; margin-bottom: 14px;
+  }
+  .save-indicator {
+    font-size: 11px; color: var(--green); text-align: center;
+    padding: 6px; opacity: 0; transition: opacity 0.3s;
+  }
+  .save-indicator.visible { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <span class="header-icon">📋</span>
+    <span id="titulo-display" onclick="editarTitulo()">
+      <span id="titulo-texto">Rendición de Gastos</span>
+      <span class="edit-hint">✎</span>
+    </span>
+    <input id="titulo-input" class="hidden" type="text" value="Rendición de Gastos"
+      onblur="guardarTitulo()" onkeydown="if(event.key==='Enter') guardarTitulo()" />
+  </div>
+</div>
+
+<div class="main">
+  <div class="card" id="form-card">
+    <div id="edit-banner" class="edit-mode-banner hidden">✏️ Editando gasto — guardá o cancelá</div>
+    <div class="card-title" id="form-title">Nuevo gasto</div>
+
+    <div class="row-2">
+      <div class="field">
+        <label>Fecha</label>
+        <input type="date" id="f-fecha" />
+      </div>
+      <div class="field">
+        <label>Categoría</label>
+        <select id="f-categoria">
+          <option>Transporte</option>
+          <option>Alojamiento</option>
+          <option>Comidas y viáticos</option>
+          <option>Materiales / Insumos</option>
+          <option>Servicios / Suscripciones</option>
+          <option>Representación</option>
+          <option>Otros</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Descripción</label>
+      <input type="text" id="f-descripcion" placeholder="Ej: Taxi aeropuerto – reunión cliente" />
+    </div>
+
+    <div class="row-2">
+      <div class="field">
+        <label>Monto</label>
+        <input type="number" id="f-monto" placeholder="0.00" min="0" step="0.01" inputmode="decimal" />
+      </div>
+      <div class="field">
+        <label>Moneda</label>
+        <select id="f-moneda">
+          <option>ARS</option>
+          <option>USD</option>
+          <option>EUR</option>
+          <option>BRL</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Comprobante (opcional)</label>
+      <input type="file" id="f-comprobante" accept="image/*,application/pdf" onchange="previewComprobante()" />
+      <img id="preview-img" class="preview-img hidden" />
+      <div id="preview-pdf" class="preview-pdf hidden">📎 PDF adjunto ✓</div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-primary" onclick="guardarGasto()" id="btn-guardar">Agregar gasto</button>
+      <button class="btn-secondary hidden" onclick="cancelarEdicion()" id="btn-cancelar">Cancelar</button>
+    </div>
+  </div>
+
+  <div id="seccion-totales" class="hidden">
+    <div class="card">
+      <div class="card-title">Total rendido</div>
+      <div class="totales-grid" id="totales-grid"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Por categoría</div>
+      <div id="categorias-chart"></div>
+    </div>
+    <div class="card">
+      <div class="filtro-row">
+        <div class="card-title" style="margin-bottom:0">Detalle</div>
+        <select class="filtro-select" id="filtro-cat" onchange="renderLista()">
+          <option value="Todas">Todas</option>
+          <option>Transporte</option>
+          <option>Alojamiento</option>
+          <option>Comidas y viáticos</option>
+          <option>Materiales / Insumos</option>
+          <option>Servicios / Suscripciones</option>
+          <option>Representación</option>
+          <option>Otros</option>
+        </select>
+      </div>
+      <div id="lista-gastos"></div>
+    </div>
+  </div>
+
+  <div id="empty-state" class="empty" style="margin-top:30px">
+    <div class="empty-icon">🧾</div>
+    Agregá tu primer gasto<br>para comenzar la rendición
+  </div>
+
+  <div class="save-indicator" id="save-indicator">✓ Guardado automáticamente</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'rendicion_gastos_v1';
+const CATS = ['Transporte','Alojamiento','Comidas y viáticos','Materiales / Insumos','Servicios / Suscripciones','Representación','Otros'];
+
+let gastos = [];
+let editId = null;
+let comprobanteData = null;
+let nextId = 1;
+
+// ---- PERSISTENCIA ----
+function cargarDatos() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    gastos = data.gastos || [];
+    nextId = data.nextId || (gastos.length ? Math.max(...gastos.map(g => g.id)) + 1 : 1);
+    const titulo = data.titulo || 'Rendición de Gastos';
+    document.getElementById('titulo-texto').textContent = titulo;
+    document.getElementById('titulo-input').value = titulo;
+  } catch(e) { gastos = []; }
+}
+
+function guardarDatos() {
+  try {
+    const titulo = document.getElementById('titulo-texto').textContent;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ gastos, nextId, titulo }));
+    const ind = document.getElementById('save-indicator');
+    ind.classList.add('visible');
+    setTimeout(() => ind.classList.remove('visible'), 2000);
+  } catch(e) {
+    toast('⚠️ No se pudo guardar');
+  }
+}
+
+// ---- TÍTULO ----
+function editarTitulo() {
+  document.getElementById('titulo-display').classList.add('hidden');
+  const inp = document.getElementById('titulo-input');
+  inp.classList.remove('hidden');
+  inp.focus(); inp.select();
+}
+function guardarTitulo() {
+  const val = document.getElementById('titulo-input').value.trim() || 'Rendición de Gastos';
+  document.getElementById('titulo-texto').textContent = val;
+  document.getElementById('titulo-input').classList.add('hidden');
+  document.getElementById('titulo-display').classList.remove('hidden');
+  guardarDatos();
+}
+
+// ---- COMPROBANTE ----
+function previewComprobante() {
+  const file = document.getElementById('f-comprobante').files[0];
+  if (!file) { comprobanteData = null; return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    comprobanteData = e.target.result;
+    if (file.type.startsWith('image/')) {
+      document.getElementById('preview-img').src = comprobanteData;
+      document.getElementById('preview-img').classList.remove('hidden');
+      document.getElementById('preview-pdf').classList.add('hidden');
+    } else {
+      document.getElementById('preview-img').classList.add('hidden');
+      document.getElementById('preview-pdf').classList.remove('hidden');
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+// ---- GUARDAR GASTO ----
+function guardarGasto() {
+  const desc = document.getElementById('f-descripcion').value.trim();
+  const monto = parseFloat(document.getElementById('f-monto').value);
+  const fecha = document.getElementById('f-fecha').value;
+  if (!desc) { toast('Ingresá una descripción'); return; }
+  if (!fecha) { toast('Seleccioná una fecha'); return; }
+  if (isNaN(monto) || monto <= 0) { toast('Ingresá un monto válido'); return; }
+
+  const gasto = {
+    id: editId !== null ? editId : nextId++,
+    fecha, descripcion: desc,
+    categoria: document.getElementById('f-categoria').value,
+    monto,
+    moneda: document.getElementById('f-moneda').value,
+    comprobante: comprobanteData,
+  };
+
+  if (editId !== null) {
+    gastos = gastos.map(g => g.id === editId ? gasto : g);
+    toast('Gasto actualizado ✓');
+    cancelarEdicion();
+  } else {
+    gastos.unshift(gasto);
+    toast('Gasto agregado ✓');
+    resetForm();
+  }
+
+  guardarDatos();
+  render();
+}
+
+function resetForm() {
+  document.getElementById('f-descripcion').value = '';
+  document.getElementById('f-monto').value = '';
+  document.getElementById('f-fecha').value = new Date().toISOString().split('T')[0];
+  document.getElementById('f-comprobante').value = '';
+  document.getElementById('preview-img').classList.add('hidden');
+  document.getElementById('preview-pdf').classList.add('hidden');
+  comprobanteData = null;
+}
+
+// ---- EDITAR / ELIMINAR ----
+function editarGasto(id) {
+  const g = gastos.find(x => x.id === id);
+  if (!g) return;
+  editId = id;
+  document.getElementById('f-fecha').value = g.fecha;
+  document.getElementById('f-descripcion').value = g.descripcion;
+  document.getElementById('f-categoria').value = g.categoria;
+  document.getElementById('f-monto').value = g.monto;
+  document.getElementById('f-moneda').value = g.moneda;
+  comprobanteData = g.comprobante || null;
+  if (g.comprobante && g.comprobante.startsWith('data:image')) {
+    document.getElementById('preview-img').src = g.comprobante;
+    document.getElementById('preview-img').classList.remove('hidden');
+    document.getElementById('preview-pdf').classList.add('hidden');
+  } else if (g.comprobante) {
+    document.getElementById('preview-img').classList.add('hidden');
+    document.getElementById('preview-pdf').classList.remove('hidden');
+  } else {
+    document.getElementById('preview-img').classList.add('hidden');
+    document.getElementById('preview-pdf').classList.add('hidden');
+  }
+  document.getElementById('form-title').textContent = 'Editar gasto';
+  document.getElementById('btn-guardar').textContent = 'Guardar cambios';
+  document.getElementById('btn-cancelar').classList.remove('hidden');
+  document.getElementById('edit-banner').classList.remove('hidden');
+  document.getElementById('form-card').scrollIntoView({ behavior: 'smooth' });
+}
+
+function cancelarEdicion() {
+  editId = null;
+  resetForm();
+  document.getElementById('form-title').textContent = 'Nuevo gasto';
+  document.getElementById('btn-guardar').textContent = 'Agregar gasto';
+  document.getElementById('btn-cancelar').classList.add('hidden');
+  document.getElementById('edit-banner').classList.add('hidden');
+}
+
+function eliminarGasto(id) {
+  if (!confirm('¿Eliminar este gasto?')) return;
+  gastos = gastos.filter(g => g.id !== id);
+  if (editId === id) cancelarEdicion();
+  toast('Gasto eliminado');
+  guardarDatos();
+  render();
+}
+
+// ---- RENDER ----
+function fmt(n, mon) {
+  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: mon, minimumFractionDigits: 2 }).format(n);
+}
+
+function render() {
+  const hay = gastos.length > 0;
+  document.getElementById('seccion-totales').classList.toggle('hidden', !hay);
+  document.getElementById('empty-state').classList.toggle('hidden', hay);
+  if (!hay) return;
+  renderTotales();
+  renderCategorias();
+  renderLista();
+}
+
+function renderTotales() {
+  const por = {};
+  gastos.forEach(g => { por[g.moneda] = (por[g.moneda] || 0) + g.monto; });
+  document.getElementById('totales-grid').innerHTML = Object.entries(por).map(([mon, tot]) => {
+    const qty = gastos.filter(g => g.moneda === mon).length;
+    return `<div class="total-card">
+      <div class="total-label">${mon}</div>
+      <div class="total-amount">${fmt(tot, mon)}</div>
+      <div class="total-count">${qty} ítem${qty !== 1 ? 's' : ''}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderCategorias() {
+  const por = {};
+  CATS.forEach(c => {
+    const items = gastos.filter(g => g.categoria === c);
+    const tot = items.reduce((s, g) => s + g.monto, 0);
+    if (tot > 0) por[c] = { tot, mon: items[0].moneda };
+  });
+  const max = Math.max(...Object.values(por).map(x => x.tot), 1);
+  document.getElementById('categorias-chart').innerHTML = Object.entries(por).map(([cat, {tot, mon}]) => `
+    <div class="cat-row">
+      <div class="cat-header">
+        <span class="cat-name">${cat}</span>
+        <span class="cat-amount">${fmt(tot, mon)}</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(tot/max)*100}%"></div></div>
+    </div>`).join('');
+}
+
+function renderLista() {
+  const filtro = document.getElementById('filtro-cat').value;
+  const lista = filtro === 'Todas' ? gastos : gastos.filter(g => g.categoria === filtro);
+  if (lista.length === 0) {
+    document.getElementById('lista-gastos').innerHTML = '<div class="empty" style="padding:24px">Sin gastos en esta categoría</div>';
+    return;
+  }
+  document.getElementById('lista-gastos').innerHTML = lista.map(g => `
+    <div class="gasto-item">
+      <div class="gasto-info">
+        <div class="gasto-desc">${esc(g.descripcion)}</div>
+        <div class="gasto-meta">
+          <span class="gasto-fecha">${formatFecha(g.fecha)}</span>
+          <span class="badge">${g.categoria}</span>
+          ${g.comprobante ? '<span class="comprobante-badge">📎</span>' : ''}
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <div class="gasto-monto">${fmt(g.monto, g.moneda)}</div>
+        <div class="gasto-acciones">
+          <button class="btn-icon" onclick="editarGasto(${g.id})">✏️</button>
+          <button class="btn-icon" onclick="eliminarGasto(${g.id})">🗑</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function formatFecha(f) {
+  if (!f) return '';
+  const [y, m, d] = f.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ---- INIT ----
+document.getElementById('f-fecha').value = new Date().toISOString().split('T')[0];
+cargarDatos();
+render();
+</script>
+</body>
+</html>
